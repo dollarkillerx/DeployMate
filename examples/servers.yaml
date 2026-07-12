@@ -1,0 +1,10 @@
+# DeployMate inventory. Your MCP client may require this data in its own format.
+servers:
+  prod-web-1:
+    url: https://203.0.113.10:9443/mcp
+    token: dm_replace_me
+    insecure_skip_verify: true
+  prod-db-1:
+    url: https://203.0.113.11:9443/mcp
+    token: dm_replace_me
+    insecure_skip_verify: true

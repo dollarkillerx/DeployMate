@@ -1,0 +1,19 @@
+[Unit]
+Description=DeployMate remote MCP agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/bin/deploymate-agent -config /etc/deploymate/agent.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+StateDirectory=deploymate
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

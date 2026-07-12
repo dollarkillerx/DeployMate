@@ -1,0 +1,20 @@
+listen: 0.0.0.0:9443
+
+tls:
+  certificate_file: /etc/deploymate/tls/server.crt
+  private_key_file: /etc/deploymate/tls/server.key
+  auto_generate: true
+  hosts:
+    - 203.0.113.10
+    - deploymate.example.com
+
+auth:
+  token_hash_file: /etc/deploymate/token.sha256
+  initial_token_file: /etc/deploymate/initial-token
+
+limits:
+  max_concurrent_commands: 4
+  max_file_size: 104857600
+  max_timeout_seconds: 86400
+  transfer_ticket_ttl_seconds: 600
+  http_read_timeout_seconds: 1800
