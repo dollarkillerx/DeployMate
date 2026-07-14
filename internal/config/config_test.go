@@ -84,3 +84,28 @@ func TestPublicBaseURLUsesFirstTLSHostAndListenPort(t *testing.T) {
 		t.Fatalf("PublicBaseURL() = %q", got)
 	}
 }
+
+func TestTLSDisabledUsesHTTPScheme(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yaml")
+	data := []byte("listen: 0.0.0.0:9443\ntls:\n  enabled: false\n")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.TLS.IsEnabled() {
+		t.Fatal("IsEnabled() = true, want false")
+	}
+	cfg.TLS.Hosts = []string{"203.0.113.10"}
+	if got := cfg.PublicBaseURL(); got != "http://203.0.113.10:9443" {
+		t.Fatalf("PublicBaseURL() = %q, want http scheme", got)
+	}
+}
+
+func TestTLSEnabledByDefault(t *testing.T) {
+	if !(TLSConfig{}).IsEnabled() {
+		t.Fatal("TLS should be enabled when 'enabled' is unset")
+	}
+}

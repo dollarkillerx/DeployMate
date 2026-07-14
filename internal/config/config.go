@@ -23,18 +23,23 @@ func (c Config) PublicBaseURL() string {
 	if c.Listen == "" {
 		return ""
 	}
+	scheme := "https"
+	if !c.TLS.IsEnabled() {
+		scheme = "http"
+	}
 	_, port, err := net.SplitHostPort(c.Listen)
 	if err != nil {
-		return "https://" + c.Listen
+		return scheme + "://" + c.Listen
 	}
 	host := "localhost"
 	if len(c.TLS.Hosts) > 0 && strings.TrimSpace(c.TLS.Hosts[0]) != "" {
 		host = strings.TrimSpace(c.TLS.Hosts[0])
 	}
-	return "https://" + net.JoinHostPort(host, port)
+	return scheme + "://" + net.JoinHostPort(host, port)
 }
 
 type TLSConfig struct {
+	Enabled         *bool    `yaml:"enabled"`
 	CertificateFile string   `yaml:"certificate_file"`
 	PrivateKeyFile  string   `yaml:"private_key_file"`
 	AutoGenerate    *bool    `yaml:"auto_generate"`
@@ -107,6 +112,10 @@ func (c Config) Validate() error {
 		return fmt.Errorf("http_read_timeout_seconds must be positive")
 	}
 	return nil
+}
+
+func (c TLSConfig) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 func (c TLSConfig) AutoGenerateEnabled() bool {

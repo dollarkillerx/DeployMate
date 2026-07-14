@@ -47,7 +47,7 @@ func run(args []string, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if cfg.TLS.AutoGenerateEnabled() {
+	if cfg.TLS.IsEnabled() && cfg.TLS.AutoGenerateEnabled() {
 		result, err := tlsconfig.EnsureCertificate(cfg.TLS.CertificateFile, cfg.TLS.PrivateKeyFile, cfg.TLS.Hosts)
 		if err != nil {
 			return fmt.Errorf("ensure TLS certificate: %w", err)
@@ -86,8 +86,13 @@ func run(args []string, logger *slog.Logger) error {
 		defer cancel()
 		_ = server.Shutdown(shutdown)
 	}()
-	logger.Info("deploymate agent listening", "address", cfg.Listen, "mcp_endpoint", "/mcp")
-	err = server.ListenAndServeTLS(cfg.TLS.CertificateFile, cfg.TLS.PrivateKeyFile)
+	logger.Info("deploymate agent listening", "address", cfg.Listen, "mcp_endpoint", "/mcp", "tls", cfg.TLS.IsEnabled())
+	if cfg.TLS.IsEnabled() {
+		err = server.ListenAndServeTLS(cfg.TLS.CertificateFile, cfg.TLS.PrivateKeyFile)
+	} else {
+		logger.Warn("TLS is disabled; serving plain HTTP — the bearer token is transmitted unencrypted, restrict network access to trusted sources")
+		err = server.ListenAndServe()
+	}
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}

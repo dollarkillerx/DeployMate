@@ -14,7 +14,7 @@
 set -eu
 
 ACTION="${1:-install}"
-VERSION="${DEPLOYMATE_VERSION:-v0.0.2}"
+VERSION="${DEPLOYMATE_VERSION:-v0.0.3}"
 DOWNLOAD_URL="${DEPLOYMATE_DOWNLOAD_URL:-https://github.com/dollarkillerx/DeployMate/releases/download/$VERSION/deploymate-agent}"
 DOWNLOAD_SHA256="${DEPLOYMATE_DOWNLOAD_SHA256:-}"
 
@@ -114,15 +114,17 @@ EOF
 }
 
 write_config() {
-  if [ ! -f "$CONFIG_DIR/agent.yaml" ]; then
+  # agent.yaml holds no secrets (the token lives in separate files), so it is
+  # safe to regenerate. Keep an existing HTTP-style config untouched, but
+  # migrate an older TLS config (which references certificate_file) to HTTP.
+  if [ -f "$CONFIG_DIR/agent.yaml" ] && ! grep -q 'certificate_file' "$CONFIG_DIR/agent.yaml"; then
+    return
+  fi
+  if [ ! -f "$CONFIG_DIR/agent.yaml" ] || grep -q 'certificate_file' "$CONFIG_DIR/agent.yaml"; then
     cat >"$CONFIG_DIR/agent.yaml" <<EOF
 listen: $LISTEN
 tls:
-  certificate_file: $CONFIG_DIR/tls/server.crt
-  private_key_file: $CONFIG_DIR/tls/server.key
-  auto_generate: true
-  hosts:
-    - $PUBLIC_HOST
+  enabled: false
 auth:
   token_hash_file: $CONFIG_DIR/token.sha256
   initial_token_file: $CONFIG_DIR/initial-token
@@ -184,9 +186,8 @@ print_client_config() {
   cat <<EOF
 servers:
   $(hostname -s):
-    url: https://$HOST_PORT/mcp
+    url: http://$HOST_PORT/mcp
     token: $TOKEN
-    insecure_skip_verify: true
 EOF
 }
 
