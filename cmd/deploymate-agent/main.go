@@ -74,6 +74,7 @@ func run(args []string, logger *slog.Logger) error {
 	fileManager := filespkg.NewManager(cfg.Limits.MaxFileSize, cfg.Limits.TransferTicketTTL)
 	mcpHandler := mcpserver.NewHandler(mcpserver.Dependencies{Runner: runner, Jobs: jobs, Files: fileManager, PublicBaseURL: cfg.PublicBaseURL(), Version: version, Logger: logger})
 	mux := http.NewServeMux()
+	mux.Handle("/readme", mcpserver.ReadmeHandler(version))
 	mux.Handle("/mcp", auth.Middleware(verifier, mcpHandler))
 	mux.Handle("/files/", fileManager.Handler())
 	server := &http.Server{Addr: cfg.Listen, Handler: audit.Middleware(logger, mux), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: cfg.Limits.RequestBodyTimeout, IdleTimeout: 2 * time.Minute, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12}}

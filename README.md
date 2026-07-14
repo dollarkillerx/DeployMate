@@ -31,7 +31,40 @@ ARM64 服务器将 `GOARCH` 改为 `arm64`。
 
 ## 安装
 
-将仓库中的以下内容按原目录结构复制到远程服务器：
+### 一键部署（推荐）
+
+`scripts/deploy.sh` 是自包含脚本：自动从 GitHub Release 下载二进制、内嵌 systemd
+unit、自动探测公网 IPv4，无需 clone 仓库。在目标服务器上以 root 执行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dollarkillerx/DeployMate/main/scripts/deploy.sh | sudo sh
+```
+
+脚本会自动判断状态：**未安装则全新安装，已安装则停止服务、下载最新二进制、再重启**，
+因此同一条命令既能安装也能升级。运行结束会打印可复制到本机 `servers.yaml` 的配置
+（含 Bearer token）。其他操作：
+
+```bash
+sudo sh deploy.sh rotate-token
+sudo sh deploy.sh uninstall
+```
+
+可用环境变量：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `DEPLOYMATE_PUBLIC_HOST` | 自动探测公网 IPv4 | 证书 SAN 和文件传输 URL 的公网地址；NAT/弹性 IP 场景建议显式指定 |
+| `DEPLOYMATE_LISTEN` | `0.0.0.0:9443` | 监听地址 |
+| `DEPLOYMATE_VERSION` | `v0.0.2` | 下载的 Release 版本 |
+| `DEPLOYMATE_DOWNLOAD_URL` | 由版本拼出 | 直接覆盖下载地址（如使用镜像/OSS） |
+| `DEPLOYMATE_DOWNLOAD_SHA256` | 空 | 设置后用 `sha256sum -c` 校验下载文件 |
+
+自动探测拿到的是**出口公网 IP**。若外网访问走的是另一个地址（弹性 IP、负载均衡 VIP），
+请显式设置 `DEPLOYMATE_PUBLIC_HOST`。
+
+### 手动安装
+
+也可以自行构建后用 `scripts/install-agent.sh`，将以下内容按原目录结构复制到远程服务器：
 
 ```text
 deploymate-agent
@@ -42,27 +75,18 @@ packaging/systemd/deploymate-agent.service
 然后执行：
 
 ```bash
-sudo ./scripts/install-agent.sh install
+sudo DEPLOYMATE_PUBLIC_HOST=203.0.113.10 ./scripts/install-agent.sh install
 ```
 
-可通过环境变量指定公网证书名称和监听地址：
+其他操作：
 
 ```bash
-sudo DEPLOYMATE_PUBLIC_HOST=203.0.113.10 \
-  DEPLOYMATE_LISTEN=0.0.0.0:9443 \
-  ./scripts/install-agent.sh install
-```
-
-安装脚本会输出可复制到本机 `servers.yaml` 的配置。其他操作：
-
-```bash
-sudo ./scripts/install-agent.sh upgrade
+sudo DEPLOYMATE_BINARY=/path/to/new/deploymate-agent ./scripts/install-agent.sh upgrade
 sudo ./scripts/install-agent.sh rotate-token
 sudo ./scripts/install-agent.sh uninstall
 ```
 
-升级时通过 `DEPLOYMATE_BINARY=/path/to/new/deploymate-agent` 指定新二进制。卸载默认保留
-`/etc/deploymate` 和 `/var/lib/deploymate`，避免误删凭据与任务记录。
+卸载默认保留 `/etc/deploymate` 和 `/var/lib/deploymate`，避免误删凭据与任务记录。
 
 ## 配置
 
@@ -150,6 +174,17 @@ claude mcp add --transport http --scope user \
 | `list_jobs` | 按状态列出最近任务 |
 | `create_upload` | 创建一次性 HTTP PUT 上传 URL |
 | `create_download` | 创建一次性 HTTP GET 下载 URL |
+
+### HTTP 端点
+
+除 MCP 外，Agent 还提供一个免认证的 `GET /readme`，返回 JSON 格式的版本号、工具清单和
+客户端接入说明，便于运维快速确认部署版本：
+
+```bash
+curl -k https://203.0.113.10:9443/readme
+```
+
+`/mcp` 需要 Bearer token，`/files/` 由一次性票据保护，只有 `/readme` 是公开的。
 
 上传示例：
 
